@@ -1,0 +1,9 @@
+{
+  "name": "liquid-ripples",
+  "description": "3D water ripple portfolio dashboard — liquid surface, ring markers per live deployment",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {},
+  "devDependencies": {},
+  "dependencies": {}
+}
