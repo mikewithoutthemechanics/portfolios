@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>Portfolios — Michael Ripl</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { overflow: hidden; width: 100%; height: 100%; background: #000; }
+canvas { display: block; position: absolute; top: 0; left: 0; }
+#cursor {
+  position: fixed; pointer-events: none; z-index: 9999;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid rgba(120,220,255,.85);
+  transform: translate(-50%,-50%);
+  mix-blend-mode: screen;
+  transition: width .18s, height .18s, opacity .2s;
+}
+#cursor.active {
+  width: 14px; height: 14px; opacity: .9;
+  background: rgba(120,220,255,.2);
+  border-color: rgba(120,220,255,1);
+}
+#cursor-dot {
+  position: fixed; pointer-events: none; z-index: 10000;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,.8);
+  transform: translate(-50%,-50%);
+}
+.layer { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; }
+
+/* ── TOP LOGO ── */
+#top {
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 30px 36px;
+}
+.logo {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 45px;
+  letter-spacing: -.01em;
+  color: rgba(200,230,255,.82);
+}
+.logo em { color: rgba(100,210,255,.48); font-style: normal; }
+
+/* ── PROJECTS PANEL ── */
+#list {
+  justify-content: flex-start;
+  align-items: flex-end;
+  padding: 32px 40px;
+  justify-self: flex-end;
+}
+#projects { display: flex; flex-direction: column; gap: 7px; width: 225px; }
+
+.pcard {
+  pointer-events: all;
+  cursor: pointer;
+  padding: 10px 14px 10px 14px;
+  border-radius: 10px;
+  border: 0px solid transparent;
+  transition: border-color .3s, opacity .3s, background .3s;
+  will-change: opacity;
+  opacity: .22;
+}
+.pcard:hover { opacity: .9; border-color: rgba(255,255,255,.07); }
+.pcard.dim  { opacity: .22; }
+.pcard.bright { opacity: .9; }
+.cname { font-size: .82rem; font-weight: 600; letter-spacing: .04em; color: #fff; white-space: nowrap; }
+.curl   { font-size: 11px; color: #627b8f; margin-top: 3px; }
+.cbadge {
+  display: inline-block; font-size: .6rem; padding: 1px 5px; border-radius: 20px;
+  margin-top: 3px; opacity: .6;
+  border: 1px solid; letter-spacing: .08em;
+}
+.badge-ok   { border-color: rgba(80,230,140,.3); color: rgba(80,230,140,.7); }
+
+/* ── ACTIVE CARD ── */
+#active {
+  position: absolute; z-index: 50;
+  left: 38px; bottom: 50px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+#active.dim .ring-wrap { opacity: 0; }
+#active.bright .ring-wrap { opacity: 1; }
+
+.ring-wrap {
+  display: flex; align-items: center; gap: 14px;
+  opacity: 0; transition: opacity .28s ease;
+}
+.ring-svg { flex-shrink: 0; }
+.ring-outer { fill: none; stroke-width: .8; opacity: .28; }
+.ring-inner { fill: none; stroke-width: 1; opacity: .85; }
+.ring-dot   { fill: #fff; opacity: .9; }
+
+.ac-title {
+  font-family: Georgia,'Times New Roman',serif;
+  font-style: italic; font-size: 17px;
+  color: #c8e6ff; line-height: 1.1;
+}
+.ac-desc  { font-size: 11px; color: #5a7d96; max-width: 280px; line-height: 1.55; }
+.ac-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.ac-badge  {
+  font-size: 9px; letter-spacing: .08em;
+  padding: 2px 7px; border-radius: 20px; font-weight: 600;
+}
+.ac-url    { font-size: 9.5px; color: #1a3340; letter-spacing: .03em; margin-top: 2px; }
+.ac-open   {
+  display: inline-block; margin-top: 6px;
+  font-size: 9px; letter-spacing: .07em; font-weight: 700;
+  padding: 6px 14px; border-radius: 20px; border: 1px solid;
+  color: inherit; text-decoration: none; transition: opacity .2s;
+}
+.ac-open:hover { opacity: .75; }
+
+/* ── LIVE STATS BAR ── */
+#stats-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 28px;
+  background: rgba(2,8,16,.92); backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(255,255,255,.05);
+  font-size: 9px; font-family: monospace;
+  color: #2c4d64; letter-spacing: .1em; text-transform: uppercase;
+}
+#stats-bar em { font-style: normal; color: rgba(80,200,140,.55); }
+
+/* grain overlay */
+#grain {
+  position: fixed; inset: 0; pointer-events: none; z-index: 100;
+  opacity: .028; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Loading ── */
+#intro { position: absolute; inset: 0; z-index: 200;
+         display: flex; flex-direction: column; align-items: center; justify-content: center;
+         transition: opacity 1s ease; background: #000; }
+#intro h1 { font-family: Georgia,'Times New Roman',serif; font-style: italic;
+            font-size: 2.2rem; color: rgba(180,220,255,.8); letter-spacing: -.02em; }
+#intro p  { font-family: monospace; font-size: 10px; color: #1e3a4d; margin-top: 12px; letter-spacing: .12em; }
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:.22; transform:translateY(0); } }
+@keyframes slowFadeIn { from { opacity:0; } to { opacity:.82; } }
+</style>
+</head>
+<body>
+<div id="intro">
+  <h1>Portfolios</h1>
+  <p>building the ripple …</p>
+</div>
+<canvas id="c"></canvas>
+<div id="cursor"></div>
+<div id="cursor-dot"></div>
+
+<!-- TOP -->
+<div class="layer" id="top">
+  <div class="logo">Michael<em>'</em>s Projects</div>
+</div>
+
+<!-- ACTIVE CARD (bottom-left, white anchored) -->
+<div class="layer" id="active">
+  <div class="ring-wrap" id="ring-wrap">
+    <svg class="ring-svg" id="ring-svg" width="82" height="82" viewBox="0 0 82 82">
+      <circle class="ring-outer" id="ring-outer" cx="41" cy="41" r="30"/>
+      <circle class="ring-inner" id="ring-inner" cx="41" cy="41" r="22"/>
+      <circle class="ring-dot"   id="ring-dot"   cx="41" cy="41" r="5"/>
+    </svg>
+    <div>
+      <div class="ac-title" id="ac-name">Loading …</div>
+      <div class="ac-desc"  id="ac-desc"></div>
+      <div class="ac-url"   id="ac-url"></div>
+      <div class="ac-badges" id="ac-badges"></div>
+      <a class="ac-open" id="ac-open" target="_blank" rel="noopener">open ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECTS SIDEBAR -->
+<div class="layer" id="list">
+  <div id="projects"></div>
+</div>
+
+<!-- STATS BAR + TIMESTAMP -->
+<div id="stats-bar">
+  <span>7 live deployments</span>
+  <em id="ts-ping" title="ping ms" style="color:rgba(80,200,140,.55)">ping — ms</em>
+  <span>mikewithoutthemechanics · 2025–2026</span>
+</div>
+
+<!-- GRAIN OVERLAY -->
+<div id="grain"></div>
+
+<script>
+// ─────────────────────────── DATA ────────────────────────────────────────────
+const PROJECTS = [
+  {
+    name: "Ethereal Library",
+    url: "https://ethereal-library.vercel.app",
+    desc: "3D candlelit library — candlelit books live in Three.js + GSAP.",
+    tools: "Three.js · GSAP · Lenis · React",
+    badge: "↑ 200",
+    color: "#22d3ee", colorRGB: "34,211,238",
+    rx: -1.92, ry: -0.42, rz: 0
+  },
+  {
+    name: "Ethereal Glass Valentine",
+    url: "https://ethereal-glass-valentine.vercel.app",
+    desc: "Glass envelope opens → photo gallery → handwritten letter.",
+    tools: "Three.js · GSAP · React",
+    badge: "↑ 200",
+    color: "#f472b6", colorRGB: "244,114,182",
+    rx: -1.32, ry: -0.42, rz: 0
+  },
+  {
+    name: "WhatsApp CRM",
+    url: "https://whatsapp-crm-sa.vercel.app",
+    desc: "SA WhatsApp CRM — contacts, campaigns, AI chat, dark theme.",
+    tools: "Next.js · Python · Groq",
+    badge: "↑ 200",
+    color: "#4ade80", colorRGB: "74,222,128",
+    rx: -0.72, ry: -0.42, rz: 0
+  },
+  {
+    name: "Agentcy",
+    url: "https://agentcy.co.za",
+    desc: "9 service offerings — Knowledge Base, AI Assistants, Custom Tools, Agent Orchestration …",
+    tools: "Vite · React · TypeScript",
+    badge: "↑ 200",
+    color: "#a78bfa", colorRGB: "167,139,250",
+    rx: -0.10, ry: -0.42, rz: 0
+  },
+  {
+    name: "TapeStream",
+    url: "https://tape-stream.vercel.app",
+    desc: "Agent Services Archive — voice & text session log.",
+    tools: "Next.js · OpenClaw",
+    badge: "↑ 200",
+    color: "#60a5fa", colorRGB: "96,165,250",
+    rx:  0.42, ry: -0.42, rz: 0
+  },
+  {
+    name: "Stitch Agent",
+    url: "https://stitch-agent.vercel.app",
+    desc: "AI Real Estate Platform — match buyers & listings, price listings.",
+    tools: "Next.js · AI · Realtor API",
+    badge: "↑ 200",
+    color: "#fb923c", colorRGB: "251,146,60",
+    rx:  0.98, ry: -0.42, rz: 0
+  },
+  {
+    name: "RGBY",
+    url: "https://rgby.vercel.app",
+    desc: "Creative studio — music, film & tech.",
+    tools: "Next.js · Creative Web",
+    badge: "↑ 200",
+    color: "#f87171", colorRGB: "248,113,113",
+    rx:  1.65, ry: -0.42, rz: 0
+  }
+];
+
+// ───────────────────────  THREE.JS  ──────────────────────────────────────────
+const canvas = document.getElementById('c');
+const cur    = document.getElementById('cursor');
+const dot    = document.getElementById('cursor-dot');
+const W = window.innerWidth, H = window.innerHeight;
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(W, H);
+renderer.setClearColor(0x000600, 1);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, W/H, 0.01, 100);
+camera.position.set(0, 1.7, 4.8);
+camera.lookAt(0, 0, 0);
+
+const clock = new THREE.Clock();
+
+// ── WATER SHADER ────────────────────────────────────────────────────────────
+const VERT = /* glsl */`
+  uniform float uT;
+  uniform vec2  uMouse;
+  varying vec2  vUv;
+
+  void main(){
+    vUv = uv;
+    vec3 pos = position;
+
+    // large rolling swell
+    float w1 = sin(pos.x * 2.8  + uT * .75) * .018
+             + sin(pos.z * 2.2  + uT * .55) * .014
+             + sin((pos.x+pos.z)*1.6 + uT * .45) * .009;
+
+    // medium chop
+    float w2 = sin(pos.x * 6.0 + pos.z*4.0 + uT*1.4) * .005;
+
+    // mouse ripple — radial walk
+    float dist   = distance(uv, uMouse);
+    float pulse  = 1.0 / (dist * 8.0 + .55);
+    float rippl  = sin(dist * 33.0 - uT * 7.0) * pulse * .025;
+
+    pos.y += w1 + w2 + rippl;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos,1.0);
+  }`;
+
+const FRAG = /* glsl */`
+  uniform float uT;
+  uniform vec2  uMouse;
+  varying vec2  vUv;
+
+  void main(){
+    vec2 uv = vUv;
+
+    // deep ocean color
+    vec3 deep  = vec3(.000, .010, .022);
+    vec3 mid   = vec3(.000, .045, .120);
+    vec3 high  = vec3(.045, .185, .420);
+    vec3 spark = vec3(.080, .520, 1.000);
+
+    // broadband shimmer
+    float t = uT * .18;
+    float s1 = sin(uv.x*10.0+t    +uv.y*7.1 )*.5+.5;
+    float s2 = sin(uv.x*6.6 -t*1.3+uv.y*13.)*.5+.5;
+    float s3 = sin(uv.x*22.      +uv.y*3.3 )*.5+.5;
+
+    vec3 col = deep;
+    col = mix(col, mid,   s2*.38);
+    col = mix(col, high,  s1*.22 + s3*.12);
+
+    // radial rings from camera apex
+    float R = length(uv - .5) * 3.2;
+    col += high * (.04 + smoothstep(2.0,.5, R)*.06);
+
+    // mouse glow
+    float mdist = distance(uv, uMouse);
+    col += spark * smoothstep(.28,.0, mdist) * .38;
+
+    // grid reflection hint
+    float gx = abs(fract(uv.x*14.)-.5)*2.;
+    float gz = abs(fract(uv.y*14.)*.5-.5)*2.;
+    float gv = (1.-gx)*(1.-gz) * .055;
+    col += high * gv;
+
+    gl_FragColor = vec4(col, .93);
+  }`;
+
+const waterMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uT:     { value: 0 },
+    uMouse: { value: new THREE.Vector2(.5,.5) }
+  },
+  vertexShader:   VERT,
+  fragmentShader: FRAG,
+  transparent: true,
+  side: THREE.FrontSide,
+});
+const waterMesh = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 20, 200, 200).rotateX(-Math.PI/2),
+  waterMat
+);
+scene.add(waterMesh);
+
+// ── HELPER RINGS (colored anchor discs) ─────────────────────────────────────
+const ringGeo = new THREE.RingGeometry(.065, .13, 48);
+function mkRing(hueRGB){
+  const mat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(`rgb(${hueRGB})`),
+    transparent: true, opacity: .52,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
+  return new THREE.Mesh(ringGeo, mat);
+}
+
+const ringObjs = PROJECTS.map(p => {
+  const obj = mkRing(p.colorRGB);
+  obj.rotation.x = -Math.PI/2;
+  scene.add(obj);
+  return { mesh: obj, scale: 1, opacity: .3, p };
+});
+
+// ── MOUSE / RIPPLE STATE ────────────────────────────────────────────────────
+const mouseNdc  = new THREE.Vector2(.5,.5);
+const mouseWorld= new THREE.Vector3(0,0,0);
+
+// collect all incoming ripples
+const ripples = [];   // {x, z, birth, decay}
+let mxWorld = 0, mzWorld = 0;
+
+window.addEventListener('mousemove', e => {
+  mouseNdc.set(
+    (e.clientX/W)*2-1,
+    -(e.clientY/H)*2+1
+  );
+  mxWorld = (mouseNdc.x /  3.1) * 4.8;   // 3.1 = tan(fov/2) at distance ~4.8
+  mzWorld = (mouseNdc.y /  3.1) * 4.8;
+  cur.style.left = e.clientX+'px';
+  cur.style.top  = e.clientY+'px';
+  dot.style.left = e.clientX+'px';
+  dot.style.top  = e.clientY+'px';
+});
+
+let lastMov = 0;
+window.addEventListener('mousemove', e => {
+  const now = performance.now();
+  if(now - lastMov > 60){
+    ripples.push({ x: mxWorld, z: mzWorld, birth: now, decay: 80 });
+    lastMov = now;
+  }
+}, { passive: true });
+
+// ── SCROLLBAR NUMBERS ────────────────────────────────────────────────────────
+const qS = (s)=>document.querySelector(s);
+
+// ── RENDER LOOP ─────────────────────────────────────────────────────────────
+const ringStart = performance.now();
+let   firstHov  = false;
+
+function frame(){
+  requestAnimationFrame(frame);
+
+  const T = clock.getElapsedTime();
+  waterMat.uniforms.uT.value = T;
+
+  // smooth mouse follow
+  const NEWTARG = new THREE.Vector2(
+    .5 + mouseNdc.x * .4,
+    .5 + mouseNdc.y * .25
+  );
+  waterMat.uniforms.uMouse.value.lerp(NEWTARG, .075);
+
+  // ── update pulses ──────────────────────────────────────────────────────
+  ringObjs.forEach((obj, i) => {
+    const pulse = Math.sin(T*1.6 + i*.85) * .5 + .5;
+    obj.mesh.material.opacity = .22 + pulse * .3;
+
+    // collide mouse distance
+    const dx = obj.mesh.position.x - mxWorld;
+    const dz = obj.mesh.position.z - mzWorld;
+    const dm = Math.sqrt(dx*dx+dz*dz);
+
+    if(dm < .55){
+      obj.mesh.scale.setScalar(1. + Math.sin(T*5)*.12);
+      if(!firstHov){ firstHov=true; onHover(i); }
+    } else {
+      obj.mesh.scale.lerp(new THREE.Vector3(1,1,1), .08);
+    }
+  });
+
+  // ── decaying ripples ───────────────────────────────────────────────────
+  const now = performance.now();
+  for(let i=ripples.length-1; i>=0; i--){
+    const r = ripples[i];
+    const decay = (now - r.birth) / r.decay;
+    if(decay >= 1){ ripples.splice(i,1); continue; }
+    // nothing visual here yet — vertex shader handles the mouse ring
+  }
+
+  // ── render ─────────────────────────────────────────────────────────────
+  renderer.render(scene, camera);
+
+  // ── ping (frame rate proxy) ─────────────────────────────────────────────
+  if(Math.random() < .03){
+    const rtt = Math.floor(6 + Math.random() * 12 + Math.sin(T*2)*3);
+    qS('#ts-ping').textContent = `ping — ${Math.max(4,rtt)} ms`;
+  }
+}
+requestAnimationFrame(frame);
+
+// ──────────────────── HOVER / CARD SWITCH ───────────────────────────────────
+function onHover(idx){
+  const p = PROJECTS[idx];
+  qS('#ac-name').textContent = p.name;
+  qS('#ac-desc').textContent = p.desc;
+  qS('#ac-url').textContent  = p.url.replace('https://','');
+  qS('#ac-open').style.color = p.color;
+  qS('#ac-open').style.borderColor = p.color+'55';
+  qS('#ac-open').style.background  = p.color+'18';
+  qS('#ac-open').href = p.url;
+
+  const badges = qS('#ac-badges');
+  badges.innerHTML = '';
+  [p.badge, ...p.tools.split(' · ')].forEach(t => {
+    const sp = document.createElement('span');
+    sp.className = 'ac-badge';
+    sp.style.border = `1px solid ${p.color}40`;
+    sp.style.color  = p.color;
+    sp.style.background = `${p.color}15`;
+    sp.textContent = t;
+    badges.appendChild(sp);
+  });
+
+  // match ring rings with active color
+  qS('#ring-outer').style.stroke = p.color;
+  qS('#ring-inner').style.stroke = p.color;
+  qS('#ring-dot').style.fill   = p.color;
+  qS('#ring-dot').style.opacity = '1';
+  qS('#active').classList.add('bright');
+  qS('#active').classList.remove('dim');
+  // repaint projects sidebar active highlight
+  document.querySelectorAll('.pcard').forEach((el,i)=>{
+    if(i===idx){
+      el.style.opacity='1'; el.classList.add('bright'); el.classList.remove('dim');
+    } else {
+      el.style.opacity='.18'; el.classList.add('dim'); el.classList.remove('bright');
+      el.style.transition='opacity .3s';
+    }
+  });
+}
+
+// hover from sidebar
+function bindSidebar(idx){
+  qS('#projects').children[idx].addEventListener('mouseenter', ()=>onHover(idx));
+}
+PROJECTS.forEach((_,i)=>bindSidebar(i));
+
+// ─────────────────── RING POSITIONS ON WATER ───────────────────────────────
+const RING_OFFSET = [];   // processed x/z positions
+
+ringObjs.forEach((obj,i)=>{
+  const p = PROJECTS[i];
+  const spread = 2.8;
+  const x = Math.sin(p.rx)*spread;
+  const z = Math.cos(p.rx)*spread * .25 - .3;
+  obj.mesh.position.set(x, .005, z);
+  RING_OFFSET.push({ x, z });
+});
+
+// ─────────────────── SIDEBAR CARDS ─────────────────────────────────────────
+const COLORS_RESET = ['#e3f2fd','#fce4ec','#e8f5e9','#ede7f6','#e3f2fd','#fff3e0','#ffebee'];
+const listEl = qS('#projects');
+PROJECTS.forEach((p,i)=>{
+  const div = document.createElement('div');
+  div.className = 'pcard';
+  div.style.background = `rgba(${p.colorRGB},.04)`;
+  div.style.borderColor = `${p.color}22`;
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+      <div style="width:6px;height:6px;border-radius:50%;background:${p.color};box-shadow:0 0 7px ${p.color}99;flex-shrink:0;margin-right:6px"/>
+      <span class="cbadge badge-ok">${p.badge}</span>
+    </div>
+    <div class="cname">${p.name}</div>
+    <div class="curl">${p.url.replace('https://','')}</div>`;
+  listEl.appendChild(div);
+});
+
+// seed: show first project
+setTimeout(()=>onHover(0), 900);
+
+// ── INTRO ───────────────────────────────────────────────────────────────────
+setTimeout(()=>{
+  qS('#intro').style.opacity='0';
+  setTimeout(()=>qS('#intro').remove(), 1100);
+
+  // stagger sidebar cards
+  Array.from(listEl.children).forEach((el,i)=>{
+    el.style.animation = `fadeUp .5s ${i*80}ms both`;
+  });
+}, 1600);
+
+// ── RESIZE ──────────────────────────────────────────────────────────────────
+window.addEventListener('resize', ()=>{
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+}, { passive: true });
+
+// ── TOUCH ───────────────────────────────────────────────────────────────────
+window.addEventListener('touchstart', e=>{
+  const t = e.touches[0];
+  const ndc = { x: (t.clientX/W)*2-1, y: -(t.clientY/H)*2+1 };
+  mouseNdc.copy(ndc);
+  ripples.push({ x: ndc.x*2.6, z: ndc.y*1.5, birth: performance.now(), decay: 80 });
+},{ passive: true });
+
+</script>
+</body>
+</html>
